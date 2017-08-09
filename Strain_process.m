@@ -11,11 +11,11 @@ arms=  [130.00000	130.00000	130.00000	130.00000	130.00000	130.00000	130.00000	13
 
 
 %% 1. Filter and convert from raw data to strain 
-load('T1_AllData.mat')
-data=T1_AllData;  
-%plot(datetime(T1_AllData(5000000:end-100,1), 'ConvertFrom', 'datenum'),T1_AllData(5000000:end-100,9));
+load('T18_21_AllData.mat')
+data=T18_21_AllData;  
+%plot(datetime(T18_21_AllData(5000000:end-100,1), 'ConvertFrom', 'datenum'),T18_21_AllData(5000000:end-100,9));
 
-window=50000;
+window=500;
 for col=2:9
     col_data=data(:,col);
 
@@ -41,19 +41,31 @@ T1_cal=data;
 %plot(datetime(T1_cal(5000000:end-100,1), 'ConvertFrom', 'datenum'),T1_cal(5000000:end-100,9));
 
 %% zoom in plots
-%sample=5000000:size(T1_AllData,1)-100;
+sample=2e5:2.2e6; %
+%sample=50000:size(T18_21_AllData,1)-100;
 %sample=6000000:6010000;
-sample=6008000:6010000;
-subplot(2,1,1)
-plot(datetime(T1_AllData(sample,1), 'ConvertFrom', 'datenum'),T1_AllData(sample,9));
-title('raw data')
-ylabel('mV')
-subplot(2,1,2)
-plot(datetime(T1_cal(sample,1), 'ConvertFrom', 'datenum'),T1_cal(sample,9));
-title('calibrated data')
-ylabel('strain')
-pause
-close all
+%sample=6008000:6010000;
+
+plot(datetime(T18_21_AllData(sample,1), 'ConvertFrom', 'datenum'),T18_21_AllData(sample,9));
+hold on
+plot(datetime(T18_21_AllData(sample,1), 'ConvertFrom', 'datenum'),Running_mode1(T18_21_AllData(sample,9),500));
+plot(datetime(T18_21_AllData(sample,1), 'ConvertFrom', 'datenum'),Running_mode1(T18_21_AllData(sample,9),5000));
+plot(datetime(T18_21_AllData(sample,1), 'ConvertFrom', 'datenum'),Running_mode1(T18_21_AllData(sample,9),10000));
+legend('Raw data', '1000 point (4 min) mode','10000 point (40 min) mode','20000 point (80 min) mode')
+%%
+
+
+
+
+
+load('C:\Users\Toby\Documents\MATLAB\Wytham_Summary\Wind_data\all_my_wind1.mat')
+rows_T1=find(T18_21_AllData(:,1)>T18_21_AllData(1.5e5,1) & T18_21_AllData(:,1)<T18_21_AllData(2e6,1));
+rows_wind=find(all_my_wind1(:,1)>T18_21_AllData(1.5e5,1) & all_my_wind1(:,1)<T18_21_AllData(2e6,1));
+%subplot(2,1,1)
+plot(datetime(T18_21_AllData(rows_T1,1), 'ConvertFrom', 'datenum'),T18_21_AllData(rows_T1,[2:9]));
+hold on
+plot(datetime(all_my_wind1(rows_wind,1), 'ConvertFrom', 'datenum'),all_my_wind1(rows_wind,3));
+
 
 
 %% 2. Convert T1_cal strain data to max strain and NE
@@ -100,10 +112,13 @@ T1_NE=data_out;
 sample=6008000:6010000;
 subplot(3,1,1)
 plot(datetime(T1_NE(sample,1,1), 'ConvertFrom', 'datenum'),T1_NE(sample,5,1));
+
+
 title('Strain on North facing side of trunk')
 ylabel('strain')
 subplot(3,1,2)
 plot(datetime(T1_NE(sample,1,1), 'ConvertFrom', 'datenum'),T1_NE(sample,5,2));
+
 title('Strain on East facing side of trunk')
 ylabel('strain')
 subplot(3,1,3)
@@ -123,6 +138,7 @@ data_in=T1_MaxStrain(:,:,1);
 % Averaging process starts here
 no_cols=size(data_in,2);  
 data_out_simple_max=NaN(5951,size(data_in,2));
+data_out_robust_max=NaN(5951,size(data_in,2));
 
 %Now we loop over the hours of ECN data and find the max of tree strain data within that hour
 for hour= 2:5951 
@@ -135,16 +151,21 @@ for hour= 2:5951
     end
     length(rows)
     data_out_simple_max(hour,:)=max(data_in(rows,:)); %simple data out - this should be good enough.
-    plot(data_in(rows,2:end))
+    data_out_robust_max(hour,:)= robust_max(data_in(rows,:) );
+    %plot(data_in(rows,2:end))
  
 end
 
-T1_hourly_simple_max=cat(2,data_out_simple_max(:,1),wind(:,2:3),data_out_simple_max(:,2:end));
-scatter(T1_hourly_simple_max(:,2),T1_hourly_simple_max(:,5))
-xlabel('Strain')
-ylabel('Wind')
-
-
+T18_21_hourly_simple_max=cat(2,data_out_simple_max(:,1),wind(:,2:3),data_out_simple_max(:,2:end));
+T18_21_hourly_robust_max=cat(2,data_out_robust_max(:,1),wind(:,2:3),data_out_robust_max(:,2:end));
+scatter(T18_21_hourly_simple_max(:,2),T18_21_hourly_simple_max(:,5))
+hold on
+scatter(T18_21_hourly_robust_max(:,2),T18_21_hourly_robust_max(:,5))
+ylabel('Strain')
+xlabel('Wind')
+legend('Simple maxima' , 'Modal maxima','Location','NorthWest')
+legend boxoff
+pause
 
 
 %% 4. Calculate critical wind speed - hourly
@@ -160,7 +181,7 @@ for tree=1:4
     tree
     col=tree+3;
     %Imports ECN hourly data and strain data %2=ECN mean 7=canopy max
-    Winter = cat(2,T1_hourly_simple_max(1:2999,2),T1_hourly_simple_max(1:2999,col)) ;
+    Winter = cat(2,T18_21_hourly_robust_max(1:2999,2),T18_21_hourly_robust_max(1:2999,col)) ;
     Winter(Winter(:,2)==-inf,2)=NaN;     %Checks for infinities
     for col = 1:2
         %Removes the NaN
@@ -249,7 +270,7 @@ end
 
 CWS=cat(2,CWS_power_winter, CWS_linear_winter);
 FITS=cat(2,FITS_power_winter, FITS_linear_winter);
-mat2clip(CWS(:, [1 4]))
+mat2clip([CWS(1, [1 4]) CWS(2, [1 4]) CWS(3, [1 4]) CWS(4, [1 4])])
 
 
 
