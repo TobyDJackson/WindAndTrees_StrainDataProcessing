@@ -1,7 +1,7 @@
 %This code runs the filtering and smoothing on the raw strain data
 
-angles=[36.00000	271.00000	178.00000	80.00000	280.00000	182.00000	202.00000	274.0000 ];
-m=     [-12.19000	-11.07000	-10.07000	-10.20000	-11.08000	-14.06000	-10.24000	-9.65000 ];
+angles=[220.00000	117.00000	200.00000	310.00000	288.00000	190.00000	190.00000	278.00000];
+m= [-12.04156	-13.00000	-14.46494	-15.67004	-12.65817	-18.40704	-12.59363	-10.38261];
 arms=  [130.00000	130.00000	130.00000	130.00000	130.00000	130.00000	130.00000	130.0000 ];
 
 %Import_SG_Info
@@ -196,17 +196,14 @@ pause
 %% 4. Calculate critical wind speed - hourly
 
 breaking_strain=6.86e-3; %this is taken from the literature and up for debate.
-CWS_power_winter = zeros(4,3);
-FITS_power_winter = zeros(4,4);
-CWS_linear_winter = zeros(4,3);
-FITS_linear_winter = zeros(4,3);
 
 %Loops over each tree 
 for tree=1:4 
     tree
+    subplot(2,2,tree)
     col=tree+3;
-    %Imports ECN hourly data and strain data %2=ECN mean 7=canopy max
-    Winter = cat(2,T_hourly_simple_max(1:2999,2),T_hourly_simple_max(1:2999,col)) ;
+    %Imports ECN hourly data and strain data %2=ECN mean 3=ECN max
+    Winter = cat(2,T_hourly_simple_max(1:2999,3),T_hourly_simple_max(1:2999,col)) ;
     Winter(Winter(:,2)==-inf,2)=NaN;     %Checks for infinities
     for col = 1:2
         %Removes the NaN
@@ -215,105 +212,44 @@ for tree=1:4
   
     strain=Winter(:,2);
     wind=Winter(:,1);
-    % Winter
-   %Function: fitpower bisquare. Green Properties pulls the strain
-   %specific to the tree from the excel            %strain      %wind
-   [fit_winter1, gof_winter1] = fit_power_bisquare(strain, wind,breaking_strain);
-   CI = confint(fit_winter1);        %Calculates the upper and lower error bounds using the confint function
-   CWS_power_winter(tree,1:3) = [(fit_winter1.a)*(breaking_strain^fit_winter1.b) (CI(1,1))*(breaking_strain^CI(1,2)) (CI(2,1))*(breaking_strain^CI(2,2))];
-   %Makes tables for R^2, root mean square error, and function parameters(A,B)
-   FITS_power_winter(tree,1:4) = [(gof_winter1.rsquare) (gof_winter1.rmse) (fit_winter1.a) (fit_winter1.b)];
-
-   %Function: fitpower force to 0. Green Properties pulls the strain
-   %specific to the tree from the excel
-   [fit_winter2, gof_winter2] = fit_bisquare_FORCE0(strain,wind);
-   CI = confint(fit_winter2);%Calculates the upper and lower error bounds using the confint function
-   CWS_linear_winter(tree,1:3) = [(fit_winter2.p1)*sqrt(breaking_strain) (CI(1,1))*sqrt(breaking_strain) (CI(2,1))*sqrt(breaking_strain)];
-   %Makes tables for R^2, root mean square error, and function
-   %parameters(A,B)         
-   FITS_linear_winter(tree,1:3) = [(gof_winter2.rsquare) (gof_winter2.rmse) (fit_winter2.p1)];
-
-
-    % Plot of Power bisquare
-
-  
-    subplot(1,2,1)
-    color=jet(10);
-    h1 = plot( strain, wind,'+','Color',color(4,:));
-    h1fit=line(linspace(0,breaking_strain,100),fit_winter1.a*(linspace(0,breaking_strain,100).^(fit_winter1.b)));
-    %h1fit=line(linspace(0,breaking_strain.^(fit_winter1.b),100).^(fit_winter1.b),...
-    %    fit_winter1.a*(linspace(0,breaking_strain.^(fit_winter1.b),100).^(fit_winter1.b)));
-    xlim([0 breaking_strain])  %Set axis for extrapolation
-    hold on
-    h2fit=plot(fit_winter1,'predobs');
-    plot(breaking_strain*ones(1000,1),linspace(0,40,1000)','r--')
-    set([h1fit],'Color',color(4,:))
-    set([h2fit],'Color',color(4,:))
-    legend off
-    legend( [h1],'Winter' , 'Location', 'NorthWest' );
-    legend boxoff
-
-    grid off
-    xlim([0 breaking_strain+0.002])
-    ylim([0 CWS_power_winter(tree,1)+5])
-    title('CWS - variable exponent')
-    ylabel('ECN Mean Wind Speed')
-    xlabel('nth root of strain')
-    exponent=num2str(round(fit_winter1.b,2));
-    %textLoc({['Winter CWS = ' num2str(CWS_power_winter(tree,1))],['Wind = ' num2str(round(fit_winter1.a)) ' strain ^' exponent(1) '^' exponent(2) '^' exponent(3) '^' exponent(4)] },'SouthEast');
-    %str=strcat('Fit_Images/CWS Mean ECN Tree  ', num2str(tree));
-
-    subplot(1,2,2)
-    winter_residuals1=wind-fit_winter1.a.*(strain.^(fit_winter1.b));    
-    histogram(winter_residuals1,'facecolor',color(4,:),'facealpha',.5,'edgecolor',color(4,:));
-    title residuals
-    pause
-    close all
+    mean_strain=mean(strain);
+    %Cut off the bottom of the strain since this biases the plot
+    wind=wind(find(strain>=0.3*mean_strain )); strain=strain(find(strain>=0.3*mean_strain )); 
     
-    FORCED_FIT=0;
-    if FORCED_FIT==1
-        % Plot of Forced fit
-        subplot(1,2,1)
-        h1 = plot( strain, wind,'+','Color',color(4,:));
-        xlim([0 breaking_strain])  %Set axis for extrapolation
-        hold on
-        plot(breaking_strain*ones(1000,1),linspace(0,50,1000)','r--')
-        %h1fit=plot(fit_winter2,'predobs');
-        h1fit=line(linspace(0,breaking_strain,100),fit_winter2.p1*(linspace(0,breaking_strain,100)).^(1/2));
-
-        set(h1fit,'Color',color(4,:))
-        legend off
-        legend( [h1],'Winter' , 'Location', 'NorthWest' );
-        legend boxoff
-        grid off
-         xlim([0 breaking_strain+0.002])
-        ylim([0 CWS_linear_winter(tree,1)+5])
-        xlabel sqrt(Strain)
-        ylabel('ECN Mean Wind Speed')
-        title('CWS - exponent == 2')
-        str=strcat('Fit_Images/CWS Mean ECN Tree  ', num2str(tree));
-        textLoc({['Winter CWS = ' num2str(CWS_linear_winter(tree,1))],['Wind = ' num2str(round(fit_winter2.p1)) 'strain ^0^.^5']},'SouthEast');
-        
-        subplot(1,2,2)
-        winter_residuals2=wind-fit_winter2.p1*(strain.^(0.5));     
-        histogram(winter_residuals2,'facecolor',color(4,:),'facealpha',.5,'edgecolor',color(4,:));
-        title residuals
-        pause
-    end
-
-
-    close all
+    color=jet(10);
+    h1 = loglog( wind, strain,'+','Color',color(4,:));
+     
+    %Here I test quantile regression (since it is the lower wind speed edge
+    %that I'm interested in - https://uk.mathworks.com/matlabcentral/fileexchange/32115-quantreg-x-y-tau-order-nboot-
+    %and also semi major axis regression - since both the wind data and 
+    %strain data have errors - https://uk.mathworks.com/matlabcentral/fileexchange/27918-gmregress
+    %
+    %[p,stats]=quantreg(log(wind),log(strain),.9,1);
+     p=gmregress(log(wind),log(strain),0.05);
+     m_data = p(2);
+     k_data = p(1);
+     model_fit_line = wind.^m_data.*exp(k_data);
+     hold on
+     h1_fitline=loglog(wind,model_fit_line,'Color',color(9,:));
+    
+     % Calculate CWS and, since CWS is a long extrapolation, strain at 10
+     % and 20 m/s wind speeds
+     CWS_data(tree) = [(breaking_strain/(exp(k_data))).^(1/m_data)]; %% (breaking_strains(tree)/(CI(1,1)))^(1/CI(1,2)) (breaking_strains(tree)/(CI(2,1)))^(1/CI(2,2))];
+     strain10_data(tree)=10.^m_data.*exp(k_data);
+     strain20_data(tree)=20.^m_data.*exp(k_data);
+    % Plot of Power bisquare
+     hbreak=plot(linspace(0,100,1000)',breaking_strain*ones(1000,1),'r--');
+     ylim([1e-5 breaking_strain+0.002])
+     xlim([3 CWS_data(tree)+20])
+     set(gca,'YTick',(1e-5)*[1 5 20 50 100 500])
+     set(gca,'XTick',[5 10 20 30])
+     xlabel('Max ECN wind speed')
+     ylabel('Max hourly strain')
+     title(['CWS estimation tree ' num2str(tree)])
+     pause
+  
 end
 
-CWS=cat(2,CWS_power_winter, CWS_linear_winter);
-FITS=cat(2,FITS_power_winter, FITS_linear_winter);
-mat2clip([CWS(1, [1 4]) CWS(2, [1 4]) CWS(3, [1 4]) CWS(4, [1 4])])
-
-
-mat2clip([ CWS(1:4, 4)'; CWS(1:4, 1)'])
-
-
-mat2clip([CWS(1:4, 1)'])
 
 
 
