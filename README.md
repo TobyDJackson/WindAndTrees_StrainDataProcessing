@@ -1,4 +1,9 @@
 # WindAndTrees_StrainDataProcessing
+
+This repo provides scripts to process strain data in order to predict wind-strain gradients and critical wind speeds. 
+
+![alt text](https://github.com/TobyDJackson/WindAndTrees_StrainDataProcessing/blob/master/images/Strain%20data%20processing.png)
+
 Complete strain data collected in Wytham Woods is available here: https://catalogue.ceh.ac.uk/documents/533d87d3-48c1-4c6e-9f2f-fda273ab45bc
 
 Complete strain data collected in Danum Valley is available here: https://doi.org/10.5285/657f420e-f956-4c33-b7d6-98c7a18aa07a
